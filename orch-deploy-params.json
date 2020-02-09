@@ -1,0 +1,10 @@
+[
+    {
+      "ParameterKey": "OrchRepositoryName",
+      "ParameterValue": "uipath-aws-orchestrator"
+    },
+    {
+      "ParameterKey": "BranchName",
+      "ParameterValue": "master"
+    }
+  ]
