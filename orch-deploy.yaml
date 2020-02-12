@@ -21,6 +21,10 @@ Parameters:
     Description: UiPath Orchestrator stack name
     Type: String
     Default: uipath-orch-test
+  OrchTopic:
+    Type: String
+    Description: Name of the SNS topic in same region to send Production approval notification.
+    Default: 'orch-single-node-approval'
 Resources:
   S3ArtifactStore:
     Type: AWS::S3::Bucket
@@ -71,6 +75,15 @@ Resources:
                   - "cloudformation:*"
                 Resource:
                   - "*"
+        - PolicyName: "SnsPublish"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Effect: "Allow"
+              Action:
+                - "sns:Publish"
+              Resource:
+                - Fn::Sub: arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${OrchTopic}        
   CloudFormationRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -125,6 +138,11 @@ Resources:
       TargetAction: OrchSourceAction
       TargetPipelineVersion: !GetAtt CodePipelineDeploy.Version
       RegisterWithThirdParty: true
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: 'Approval for Orch single node'
+      TopicName: !Ref OrchTopic
   CodePipelineDeploy:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -133,7 +151,7 @@ Resources:
         Location:
           Ref: S3ArtifactStore
       RoleArn: !GetAtt CodePipelineRole.Arn
-      Name: docker-robot-deploy
+      Name: orch-deploy
       Stages:
         - Name: GitHubSource
           Actions:
@@ -167,12 +185,23 @@ Resources:
                 Capabilities: CAPABILITY_IAM
                 StackName: !Ref DeployStack
                 RoleArn: !GetAtt CloudFormationRole.Arn
-                TemplatePath: OrchSource::orch-deploy.yaml
+                TemplatePath: OrchSource::orch-single-node.yaml
                 ParameterOverrides: |
                   {
                     "KeyName" : "aws-sydney"
                   }
               RunOrder: 1
+            - Name: Approval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              Configuration:
+                NotificationArn:
+                  Fn::Sub: arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${OrchTopic}
+                CustomData: Approve once orch has been deployed.
+              RunOrder: 2
         - Name: Delete
           Actions:
             - Name: DeleteDeployStack

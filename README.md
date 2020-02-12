@@ -9,6 +9,11 @@ aws cloudformation create-stack --stack-name orch-deploy --template-body file://
 ```
 
 ```cmd
+aws cloudformation update-stack --stack-name orch-deploy --template-body file://orch-deploy.yaml --parameters file://orch-deploy-params.json --capabilities CAPABILITY_IAM
+```
+
+
+```cmd
 aws cloudformation validate-template --template-body file://orch-deploy.yaml --parameters file://orch-deploy-params.json 
 ```
 
